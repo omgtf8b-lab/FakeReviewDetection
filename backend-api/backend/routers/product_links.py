@@ -14,6 +14,7 @@ from services.link_analysis import analyze
 from services.upload_analysis import analyze_files,InvalidMedia
 from services.review_repository import save_collection,load_collection
 from services.crawl_pipeline import crawl_to_database,analyze_from_database
+from services.browser_diagnostics import public_collection
 
 router=APIRouter(prefix='/api/product-links',tags=['Kiểm tra sản phẩm từ link và media'])
 
@@ -61,7 +62,7 @@ def output(row):
     created=row.created_at
     if created and created.tzinfo is None:created=created.replace(tzinfo=timezone.utc)
     return {'id':row.id,'url':row.url,'platform':row.platform,'status':row.status,
-        'created_at':created,'result':json.loads(row.result) if row.result else None}
+        'created_at':created,'result':public_collection(json.loads(row.result)) if row.result else None}
 
 
 def expire_stalled(db,user_id):
@@ -120,6 +121,12 @@ def run_job(jid,payload,imported=None,snapshot_id=None):
                 if stored:
                     message.update({'message':'Dữ liệu nguồn đã lưu vào database, nhưng bước phân tích chưa hoàn tất. Có thể phân tích lại bản lưu mà không cào lần nữa.',
                         'snapshot_id':stored.id})
+                    try:
+                        _,evidence=load_collection(db,stored.id,row.user_id)
+                        safe=public_collection(evidence)
+                        for key in ('diagnostics','attempts'):
+                            if key in safe:message[key]=safe[key]
+                    except (LookupError,ValueError,TypeError,KeyError):pass
             row.status='failed';row.result=json.dumps(message,ensure_ascii=False)
         db.commit()
 
@@ -181,7 +188,12 @@ def history(db:Session=Depends(get_db),user=Depends(get_current_user)):
 @router.get('/snapshots/{sid}')
 def snapshot_data(sid:int,db:Session=Depends(get_db),user=Depends(get_current_user)):
     row,data=owned_collection(db,sid,user.id)
-    return {'snapshot_id':row.id,'source':row.source,'sha256':row.sha256,'captured_at':row.created_at.replace(tzinfo=timezone.utc).isoformat() if row.created_at else None,'dataset':data}
+    safe=public_collection(data)
+    # sha256 remains the verified immutable source digest, including for old rows.
+    # The export view may redact historical diagnostics without mutating storage.
+    public_digest=hashlib.sha256(json.dumps(safe,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    return {'snapshot_id':row.id,'source':row.source,'sha256':row.sha256,'dataset_sha256':public_digest,
+        'captured_at':row.created_at.replace(tzinfo=timezone.utc).isoformat() if row.created_at else None,'dataset':safe}
 
 
 def owned_collection(db,sid,user_id):

@@ -6,6 +6,7 @@ from io import BytesIO
 import re
 import unicodedata
 from services.marketplaces import bounded_get, CollectionError, product_identity
+from services.browser_diagnostics import public_collection
 
 
 def normalize(value):
@@ -87,6 +88,7 @@ def media_evidence(reviews, inspect=False):
 
 
 def analyze(collected, inspect_media=False):
+    collected=public_collection(collected)
     # Stable IDs remove pagination duplicates; never double-count identical source records.
     seen=set();reviews=[]
     for row in collected['reviews']:

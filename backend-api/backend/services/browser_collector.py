@@ -10,7 +10,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 from services.marketplaces import identify_url, parse_page, CollectionError
-from services.browser_diagnostics import startup_failure, collector_configuration
+from services.browser_diagnostics import startup_failure, collector_configuration, public_collection
 from services.browser_worker import run_worker, BrowserWorkerError
 
 DOM_SCRIPT = r"""
@@ -173,9 +173,15 @@ def worker(payload):
             if driver is not None:driver.quit()
 
 
+def execute_payload(payload):
+    try:return public_collection(worker(payload))
+    except CollectionError as exc:return unavailable(payload['url'],exc.code,exc.message)
+    except Exception as exc:
+        result=unavailable(payload['url'],'browser_unavailable','Bộ đọc trình duyệt chưa hoàn tất; chưa có kết luận về sản phẩm.')
+        result['diagnostics']={'stage':'worker','code':'worker_execution_failed','exception_type':type(exc).__name__}
+        return public_collection(result)
+
+
 if __name__=='__main__':
     payload=json.load(sys.stdin)
-    try:result=worker(payload)
-    except CollectionError as exc:result=unavailable(payload['url'],exc.code,exc.message)
-    except Exception:result=unavailable(payload['url'],'browser_unavailable','Không khởi động/đọc được trình duyệt. Kiểm tra Chrome và driver; chưa có kết luận về sản phẩm.')
-    print(json.dumps(result,ensure_ascii=False))
+    print(json.dumps(execute_payload(payload),ensure_ascii=False))

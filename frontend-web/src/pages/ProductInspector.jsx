@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Link2, ImagePlus, Video, FileText, ArrowRight, Loader2, ShieldCheck, AlertCircle, Clock, Download } from 'lucide-react';
 import { api, formatApiError } from '../lib/api';
 import ReviewCheck from './ReviewCheck';
+import CollectorDiagnostics from '../components/CollectorDiagnostics';
 import './inspector.css';
 
 const root = '/api/product-links';
@@ -18,7 +19,7 @@ export function InspectionResult({ job, onReplay }) {
   const [snapshotError,setSnapshotError]=useState('');
   const result = job?.result;
   if (!result) return null;
-  if (job.status === 'failed') return <div className="inspect-warning" role="alert"><p>{result.message}</p>{result.snapshot_id && onReplay && <button className="btn btn-outline" onClick={()=>onReplay(result.snapshot_id)}>Phân tích lại dữ liệu đã lưu</button>}</div>;
+  if (job.status === 'failed') return <div className="inspect-warning" role="alert"><p>{result.message}</p><CollectorDiagnostics data={result} />{result.snapshot_id && onReplay && <button className="btn btn-outline" onClick={()=>onReplay(result.snapshot_id)}>Phân tích lại dữ liệu đã lưu</button>}</div>;
   const s = result.summary || {};
   const provenance=result.provenance || {};
   const manual=['user_supplied_review_import','user_written_review'].includes(result.source);
@@ -42,6 +43,7 @@ export function InspectionResult({ job, onReplay }) {
     {snapshotError && <p role="alert">{snapshotError}</p>}
     <div className={`inspect-verdict ${s.reviews_with_signals || s.files_with_signals ? 'attention' : ''}`}><ShieldCheck size={24} /><div><strong>{verdicts[s.verdict] || 'Chưa có kết luận'}</strong><p>{media ? 'Kiểm tra kỹ thuật ảnh/video; chưa xác minh thật/giả.' : 'Nhận định áp dụng cho mẫu review đọc được, không xác nhận hàng thật/hàng giả.'}</p></div></div>
     {result.collection_message && <p className="inspect-warning">{result.collection_message}</p>}
+    <CollectorDiagnostics data={result} />
     {result.storage?.persisted_before_analysis && <p className="inspect-muted">Đã lưu dữ liệu vào database nội bộ trước khi phân tích. Mã bản lưu: {result.storage.snapshot_id}.</p>}
     <div className="inspect-metrics">
       <div><span>{media ? 'Tệp đã đọc' : 'Review đã đọc'}</span><strong>{count ?? 0}</strong></div>

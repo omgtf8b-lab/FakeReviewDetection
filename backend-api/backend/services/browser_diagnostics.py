@@ -17,9 +17,74 @@ MARKERS = {
 CODES = {'chrome_crashpad_failed', 'driver_version_mismatch', 'profile_in_use',
          'browser_permission_denied', 'chrome_binary_missing', 'chrome_start_crashed',
          'browser_start_unknown', 'worker_spawn_failed', 'worker_exit_failed',
-         'worker_invalid_output', 'worker_timeout', 'worker_io_failed'}
+         'worker_invalid_output', 'worker_timeout', 'worker_io_failed', 'worker_execution_failed',
+         'collection_spawn_failed', 'collection_exit_failed', 'collection_invalid_output',
+         'collection_timeout', 'collection_io_failed'}
 EXCEPTIONS = {'SessionNotCreatedException', 'WebDriverException', 'NoSuchDriverException',
-              'PermissionError', 'FileNotFoundError', 'TimeoutException'}
+              'PermissionError', 'FileNotFoundError', 'TimeoutException', 'TimeoutExpired', 'OSError', 'OtherError'}
+STATUSES = {'browser_start_failed', 'browser_unavailable', 'browser_disabled', 'browser_busy',
+            'browser_timeout', 'reviews_collected', 'no_accessible_reviews', 'network_error',
+            'access_restricted', 'source_error', 'source_too_large', 'invalid_url', 'unsafe_address',
+            'media_host_not_supported', 'unexpected_redirect', 'invalid_redirect', 'too_many_redirects',
+            'unsupported_response', 'collection_timeout', 'collector_error', 'imported', 'unknown'}
+VERSION = re.compile(r'\d{1,4}\.\d{1,6}\.\d{1,8}\.\d{1,6}')
+CONFIG_BOOLS = {'binary_requested', 'driver_requested', 'selenium_env_override_present',
+                'cache_configured', 'profile_base_configured', 'automatic_driver_requested'}
+
+
+def public_diagnostics(value):
+    """Strict public schema, including for old snapshots and malformed worker data."""
+    if not isinstance(value, dict) or not isinstance(value.get('code'), str) or value['code'] not in CODES: return None
+    code = value['code']
+    stage = value.get('stage')
+    if not isinstance(stage, str) or stage not in {'startup', 'worker', 'collection', 'render'}:
+        stage = 'collection' if code.startswith('collection_') else 'worker' if code.startswith('worker_') else 'startup'
+    result = {'stage': stage, 'code': code}
+    if isinstance(value.get('exception_type'), str) and value['exception_type'] in EXCEPTIONS: result['exception_type'] = value['exception_type']
+    found = value.get('evidence')
+    if isinstance(found, list): result['evidence'] = [k for k in MARKERS if k in found]
+    for key in ('driver_version_from_log', 'browser_version_from_error'):
+        version = value.get(key)
+        if isinstance(version, str) and VERSION.fullmatch(version): result[key] = version
+    number = value.get('returncode')
+    if type(number) is int and -(2**32) <= number <= 2**32: result['returncode'] = number
+    config = value.get('configuration')
+    if isinstance(config, dict):
+        safe = {k: config[k] for k in CONFIG_BOOLS if type(config.get(k)) is bool}
+        for key in ('binary_request_exists', 'driver_request_exists'):
+            if key in config and (config[key] is None or type(config[key]) is bool): safe[key] = config[key]
+        if config.get('observed_in') == 'browser_worker': safe['observed_in'] = 'browser_worker'
+        version = config.get('python_version')
+        if isinstance(version, str) and re.fullmatch(r'\d{1,3}\.\d{1,3}\.\d{1,3}', version): safe['python_version'] = version
+        if safe: result['configuration'] = safe
+    return result
+
+
+def public_collection(data):
+    """Filter diagnostic slots only; do not alter review/media evidence or source checksums."""
+    if not isinstance(data, dict): return None
+    result = dict(data)
+    # Historical debug fields have no place in public collection/job responses.
+    for key in ('driver_log_tail', 'stderr', 'stdout', 'traceback', 'raw_log', 'command_line', 'environment'):
+        result.pop(key, None)
+    if 'diagnostics' in result:
+        safe = public_diagnostics(result['diagnostics'])
+        if safe: result['diagnostics'] = safe
+        else: result.pop('diagnostics')
+    if 'attempts' in result:
+        attempts = []
+        raw = result['attempts']
+        for item in raw[:8] if isinstance(raw, list) else []:
+            if not isinstance(item, dict) or not isinstance(item.get('collector'), str) or item['collector'] not in {'selenium', 'http', 'collection'}: continue
+            status = item.get('status')
+            attempt = {'collector': item['collector'], 'status': status if isinstance(status, str) and status in STATUSES else 'unknown'}
+            safe = public_diagnostics(item.get('diagnostics'))
+            code = safe['code'] if safe else item.get('diagnostic_code')
+            if isinstance(code, str) and code in CODES: attempt['diagnostic_code'] = code
+            if safe: attempt['diagnostics'] = safe
+            attempts.append(attempt)
+        result['attempts'] = attempts
+    return result
 
 
 def collector_configuration(env=None):

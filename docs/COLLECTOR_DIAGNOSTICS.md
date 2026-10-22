@@ -75,3 +75,5 @@ Do not replace proxy guards with unrestricted local access or add no-sandbox fla
 See [runtime findings, proposed configuration and rollback](COLLECTOR_DEPLOYMENT_PLAN.md) for the observed port-8001 process and the isolated Selenium Manager cache experiment. `scripts/inspect_collector_runtime.py` uses optional psutil (available in the local inspection environment); it never imports the app or database. It exports only allowlisted paths, boolean environment flags and redacted launch metadata.
 
 Startup diagnostics now also report configuration presence/existence without paths. Version fields are populated only when a version is observed in the startup log/error; a cached directory name is not treated as proof of a selected driver. These fields do not change binary selection or enable new browser behavior.
+
+The subsequent [propagation review](DIAGNOSTICS_FLOW_REVIEW.md) documents the shared public schema, fallback/API/snapshot/UI fixes, immutable legacy-export checksums and the latest 107-test backend regression result. This supersedes earlier test counts for the current patch while retaining their historical context.

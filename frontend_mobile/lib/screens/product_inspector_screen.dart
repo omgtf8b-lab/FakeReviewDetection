@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../services/auth_state.dart';
 import '../services/workspace_api.dart';
+import '../widgets/collector_diagnostics.dart';
 import 'login_screen.dart';
 
 class ProductInspectorScreen extends StatefulWidget {
@@ -315,6 +316,7 @@ class _ProductInspectorScreenState extends State<ProductInspectorScreen> {
       return Column(
         children: [
           Text(data['message'] ?? 'Chưa hoàn tất phân tích.'),
+          CollectorDiagnostics(data: data),
           if (data['snapshot_id'] != null)
             OutlinedButton(
               onPressed: _pending || _busy
@@ -357,6 +359,7 @@ class _ProductInspectorScreenState extends State<ProductInspectorScreen> {
             ),
             if (data['collection_message'] != null)
               Text(data['collection_message']),
+            CollectorDiagnostics(data: data),
             if (data['provenance']?['mode'] == 'snapshot')
               Text(
                 'Kết quả phân tích bản lưu được lưu lúc ${data['provenance']['captured_at']}. Lần này không lấy dữ liệu mới từ sàn.',

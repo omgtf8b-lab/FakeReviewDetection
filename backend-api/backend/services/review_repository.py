@@ -3,6 +3,7 @@ import hashlib
 import json
 from sqlalchemy.orm import Session
 from extended_models import CollectionSnapshot,CollectedReview
+from services.browser_diagnostics import public_collection
 
 
 def encode(value):
@@ -15,6 +16,7 @@ def digest(value):
 
 def save_collection(db:Session,user_id:int,data:dict):
     """Flush an immutable dataset plus queryable review rows; caller commits."""
+    data=public_collection(data)
     raw=encode({**data,'storage_schema':'review-rows-v1'})
     snapshot=CollectionSnapshot(user_id=user_id,canonical_url=data['url'],platform=data['platform'],
         source=data['source'],payload=raw,sha256=digest(raw))

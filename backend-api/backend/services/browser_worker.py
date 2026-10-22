@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from services.browser_diagnostics import public_collection
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -61,7 +62,7 @@ def run_worker(payload, module='services.browser_collector', timeout=65):
             if not isinstance(data, dict) or not isinstance(data.get('reviews'), list): raise ValueError()
         except (ValueError, TypeError):
             raise BrowserWorkerError('worker_invalid_output') from None
-        return data
+        return public_collection(data)
     finally:
         for stream in (process.stdin, process.stdout, process.stderr):
             if stream: stream.close()
