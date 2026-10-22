@@ -37,7 +37,11 @@ The actual collector uses the backend's `sys.executable`, `-m services.browser_c
 
 In Codex, the child confirmed matching parent interpreter, correct backend cwd and local NO_PROXY, then failed at Chrome startup with allowlisted `chrome_crashpad_failed` evidence. This demonstrates transport/import execution reached the Chrome factory; it does not imply the native child must fail.
 
-Native parent→worker results should be recorded separately from the successful direct matrix. A successful child test would rule out the shared launch mechanism under the pinned tested environment, but would not establish which interpreter, driver discovery settings or Windows token are used by an already running backend. Live service process configuration still requires comparison before asserting the original application's root cause is fixed.
+The native parent→worker control subsequently PASSED: `ok=true`, `stage=render`, `collection_status=diagnostic_pass`, Python 3.12.14, matching parent interpreter, correct backend cwd and local NO_PROXY. Both Chrome and ChromeDriver were 156.0.8078.47. This used the same `_create_driver` factory including the new non-verbose error logging settings.
+
+Together, the native matrix and child control rule out the shared browser launch mechanism under the pinned tested environment as a reproducible cause. They do not establish which interpreter, driver discovery settings or Windows execution token are used by an already running backend. The remaining strongest lead is an execution-environment difference: Codex fails at Crashpad even without Selenium, whereas native passes both direct and worker launches. The live service process configuration still needs comparison before asserting its original failure is fixed.
+
+The local diagnostic does not exercise an HTTP request into the running backend or the outer `collect_bounded` strategy process. It intentionally uses explicit matching binaries and isolated cache/profile paths. Automatic driver discovery, externally inherited environment settings and the live backend process context remain unverified.
 
 ## Safe diagnostics
 
