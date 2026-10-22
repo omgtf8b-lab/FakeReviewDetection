@@ -10,7 +10,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 from services.marketplaces import identify_url, parse_page, CollectionError
-from services.browser_diagnostics import startup_failure
+from services.browser_diagnostics import startup_failure, collector_configuration
 from services.browser_worker import run_worker, BrowserWorkerError
 
 DOM_SCRIPT = r"""
@@ -166,6 +166,7 @@ def worker(payload):
             except Exception as exc:
                 data=unavailable(url,'browser_start_failed','Chrome trên server chưa khởi động được; đây chưa phải lỗi quyền truy cập của sàn. Có thể dùng mục Thu thập từ Chrome để nhập review đang hiển thị trên trình duyệt của bạn.')
                 data['diagnostics']=startup_failure(exc,startup_log)
+                data['diagnostics']['configuration']=collector_configuration()
                 return data
             return read_rendered(driver,url,min(int(payload.get('limit',50)),200))
         finally:

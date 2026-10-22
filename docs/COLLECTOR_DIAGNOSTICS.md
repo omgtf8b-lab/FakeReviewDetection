@@ -69,3 +69,9 @@ python backend-api/backend/scripts/diagnose_worker_chain.py --output-dir PATH_TO
 The output directory must not already exist. `result.json` contains only safe structured results. The diagnostic reports whether the Python executable matches the parent and cwd matches the backend, without printing private paths or inherited environment values.
 
 Do not replace proxy guards with unrestricted local access or add no-sandbox flags based solely on these results. No anti-bot/platform-blocking conclusion follows from a local HTML startup test.
+
+## Read-only deployment inspection follow-up
+
+See [runtime findings, proposed configuration and rollback](COLLECTOR_DEPLOYMENT_PLAN.md) for the observed port-8001 process and the isolated Selenium Manager cache experiment. `scripts/inspect_collector_runtime.py` uses optional psutil (available in the local inspection environment); it never imports the app or database. It exports only allowlisted paths, boolean environment flags and redacted launch metadata.
+
+Startup diagnostics now also report configuration presence/existence without paths. Version fields are populated only when a version is observed in the startup log/error; a cached directory name is not treated as proof of a selected driver. These fields do not change binary selection or enable new browser behavior.
