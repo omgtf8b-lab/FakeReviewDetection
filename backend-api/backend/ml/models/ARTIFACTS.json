@@ -1,0 +1,23 @@
+{
+  "note": "Artifacts remain local. Provision trusted artifacts or retrain; hashes identify the runtime artifacts at synchronization time.",
+  "artifacts": [
+    {
+      "path": "fake_review_model.joblib",
+      "bytes": 1405072,
+      "sha256": "1c92b79ceada5054ea18742192be5b106bf0bea13086f1ff2057979036aba3bd",
+      "included_in_git": false
+    },
+    {
+      "path": "distilbert.joblib",
+      "bytes": 207,
+      "sha256": "4190932504a6de0351a37e02a8cb9bdc7ec2cd87d3456853419789bc3ae4a1e0",
+      "included_in_git": false
+    },
+    {
+      "path": "distilbert/model.safetensors",
+      "bytes": 267832560,
+      "sha256": "d8f4db284d35c9617be6eb23140b1f9011166b394a0ed17f3d9fa3e4755f2349",
+      "included_in_git": false
+    }
+  ]
+}

@@ -80,6 +80,9 @@ class ProductResponse(BaseModel):
     id: int
     product_code: str
     name: str
+    image_url: Optional[str] = None
+    stock: Optional[int] = None
+    sale_status: str = 'active'
     brand: Optional[str]
     sku: Optional[str]
     category: Optional[str]
@@ -101,25 +104,29 @@ class ProductResponse(BaseModel):
 class ReviewCreate(BaseModel):
     product_id: int = Field(gt=0)
     rating: float = Field(ge=1, le=5)
-    content: str = Field(min_length=5, max_length=5000)
+    content: str = Field(min_length=1, max_length=5000)
 
     @field_validator("content")
     @classmethod
     def clean_content(cls, value: str):
         value = value.strip()
-        if len(value) < 5:
-            raise ValueError("Nội dung đánh giá phải có ít nhất 5 ký tự")
+        if not value:
+            raise ValueError("Nội dung đánh giá không được rỗng")
         return value
 
 
 class ReviewUpdate(BaseModel):
     rating: Optional[float] = Field(default=None, ge=1, le=5)
-    content: Optional[str] = Field(default=None, min_length=5, max_length=5000)
+    content: Optional[str] = Field(default=None, min_length=1, max_length=5000)
 
     @field_validator("content")
     @classmethod
     def clean_content(cls, value: Optional[str]):
-        return value.strip() if value is not None else value
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Nội dung không được rỗng")
+        return value
 
 
 class PredictionResponse(BaseModel):
@@ -141,6 +148,9 @@ class ReviewResponse(BaseModel):
     id: int
     product_id: int
     user_id: int
+    author_name: Optional[str] = None
+    effective_label: Optional[str] = None
+    moderation_label: Optional[str] = None
     rating: float
     content: str
     created_at: datetime
@@ -152,7 +162,7 @@ class PredictionRequest(BaseModel):
 
 
 class PredictionDirectRequest(BaseModel):
-    content: str = Field(min_length=5, max_length=5000)
+    content: str = Field(min_length=1, max_length=5000)
 
 
 class PredictionDirectResponse(BaseModel):

@@ -50,27 +50,10 @@ export default function Header({ title, toggleSidebar }) {
       </div>
       
       <div className="header-right">
-        <div className="search-wrapper">
-          <Search className="search-icon" size={18} />
-          <input 
-            type="text" 
-            className="search-input" 
-            placeholder="Tìm kiếm nhanh..." 
-          />
-        </div>
-        
         <div className="header-actions">
-          <button className="action-btn" aria-label="Notifications">
+          <button className="action-btn" aria-label="Thông báo" onClick={() => navigate("/notifications")}>
             <Bell size={20} />
-            <span style={{
-              position: 'absolute',
-              top: '2px',
-              right: '2px',
-              width: '8px',
-              height: '8px',
-              backgroundColor: 'var(--danger)',
-              borderRadius: '50%'
-            }}></span>
+
           </button>
           
           <div className="profile-menu-container" ref={dropdownRef}>

@@ -1,3 +1,5 @@
+from sqlalchemy import select, func
+from services.labels import current_label
 from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
@@ -6,6 +8,8 @@ import schemas
 from auth import get_current_user
 from database import get_db
 from services.prediction_service import predict_for_review
+from ml.predictor import predictor
+import extended_models as ex
 
 router = APIRouter(prefix="/api/reviews", tags=["Đánh giá"])
 
@@ -20,8 +24,10 @@ def _list_reviews(db: Session, product_id: int | None, label: str | None, rating
         query = query.filter(models.Review.product_id == product_id)
     if rating is not None:
         query = query.filter(models.Review.rating == rating)
-    if label:
-        query = query.join(models.Prediction, models.Prediction.review_id == models.Review.id, isouter=True).filter(models.Prediction.predicted_label == label)
+    if label == 'pending':
+        query=query.filter(current_label().is_(None))
+    elif label:
+        query=query.filter(current_label()==label)
     total = query.count()
     items = query.order_by(models.Review.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return {"items": items, "total": total, "page": page, "page_size": page_size}
@@ -32,11 +38,20 @@ def submit_review(review: schemas.ReviewCreate, db: Session = Depends(get_db), c
     product = db.query(models.Product).filter(models.Product.id == review.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
+    purchase = db.query(ex.Purchase).filter_by(user_id=current_user.id, product_id=review.product_id, status='completed').first()
+    if not purchase:
+        raise HTTPException(403, 'Chỉ được đánh giá sau khi đơn hàng đã được người bán xác nhận hoàn tất.')
+    predictor.predict(review.content)
     new_review = models.Review(product_id=review.product_id, user_id=current_user.id, rating=review.rating, content=review.content.strip())
     db.add(new_review)
-    db.commit()
-    db.refresh(new_review)
-    predict_for_review(db, new_review)
+    try:
+        db.flush()
+        predict_for_review(db, new_review, commit=False)
+        db.commit()
+        db.refresh(new_review)
+    except Exception:
+        db.rollback()
+        raise
     return new_review
 
 
@@ -49,11 +64,10 @@ def get_my_reviews(
     current_user: models.User = Depends(get_current_user),
 ):
     query = _review_query(db).filter(models.Review.user_id == current_user.id)
-    if label:
-        if label == "pending":
-            query = query.filter(~models.Review.id.in_(db.query(models.Prediction.review_id)))
-        else:
-            query = query.join(models.Prediction, models.Prediction.review_id == models.Review.id).filter(models.Prediction.predicted_label == label)
+    if label == 'pending':
+        query=query.filter(current_label().is_(None))
+    elif label:
+        query=query.filter(current_label()==label)
     total = query.count()
     items = query.order_by(models.Review.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return {"items": items, "total": total, "page": page, "page_size": page_size}
@@ -85,11 +99,17 @@ def update_review(review_id: int, payload: schemas.ReviewUpdate, db: Session = D
         raise HTTPException(status_code=404, detail="Đánh giá không tồn tại")
     if review.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Bạn không có quyền sửa đánh giá này")
+    predictor.predict(payload.content if payload.content is not None else review.content)
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(review, key, value.strip() if isinstance(value, str) else value)
-    db.commit()
-    db.refresh(review)
-    predict_for_review(db, review)
+    try:
+        db.flush()
+        predict_for_review(db, review, commit=False)
+        db.commit()
+        db.refresh(review)
+    except Exception:
+        db.rollback()
+        raise
     return review
 
 
@@ -100,6 +120,7 @@ def delete_review(review_id: int, db: Session = Depends(get_db), current_user: m
         raise HTTPException(status_code=404, detail="Đánh giá không tồn tại")
     if review.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Bạn không có quyền xóa review này")
+    db.add(ex.SearchEvent(kind="review",entity_id=review.id,operation="delete"))
     db.delete(review)
     db.commit()
     return {"message": "Xóa đánh giá thành công"}

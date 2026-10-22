@@ -1,94 +1,88 @@
-"""Train and evaluate a TF-IDF + Logistic Regression baseline.
-
-Expected CSV columns:
-    text,label
-Labels accepted: fake/real or 1/0.
-
-Example:
-    python -m ml.train --data data/reviews.csv --output ml/models/fake_review_model.joblib
-"""
-from __future__ import annotations
+"""Reproducible English OR/CG baseline, train-only CV calibration, untouched test."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
-
+from datetime import datetime, timezone
 import joblib
 import pandas as pd
+import sklearn
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score, roc_auc_score
-from sklearn.model_selection import train_test_split
+from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score, brier_score_loss
+from ml.text import clean_batch, clean_text
+
+ROOT = Path(__file__).resolve().parents[1]
+PROJECT = ROOT.parents[1]
 
 
-def normalize_label(value):
-    s = str(value).strip().lower()
-    if s in {"1", "fake", "giả", "spam"}:
-        return "fake"
-    if s in {"0", "real", "thật", "genuine"}:
-        return "real"
-    raise ValueError(f"Nhãn không hợp lệ: {value}")
+def dataset(path):
+    df = pd.read_csv(path)
+    text_col = 'text' if 'text' in df else 'text_'
+    labels = {'OR': 0, 'CG': 1, 'real': 0, 'fake': 1, '0': 0, '1': 1}
+    df = df.dropna(subset=[text_col, 'label']).copy()
+    df['text'] = df[text_col].astype(str)
+    df['target'] = df['label'].astype(str).map(labels)
+    if df.target.isna().any():
+        raise ValueError('Unsupported labels')
+    df['normalized'] = df.text.map(clean_text)
+    conflicts = df.groupby('normalized').target.nunique()
+    df = df[~df.normalized.isin(conflicts[conflicts > 1].index)]
+    return df[df.normalized.str.len() > 0].drop_duplicates('normalized').reset_index(drop=True)
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data", required=True)
-    parser.add_argument("--output", default="ml/models/fake_review_model.joblib")
-    parser.add_argument("--metrics", default="ml/models/metrics.json")
-    parser.add_argument("--test-size", type=float, default=0.2)
-    parser.add_argument("--random-state", type=int, default=42)
-    args = parser.parse_args()
-
-    df = pd.read_csv(args.data)
-    missing = {"text", "label"} - set(df.columns)
-    if missing:
-        raise ValueError(f"Thiếu cột: {sorted(missing)}")
-    df = df.dropna(subset=["text", "label"]).copy()
-    df["text"] = df["text"].astype(str).str.strip()
-    df["label"] = df["label"].map(normalize_label)
-    if df["label"].nunique() < 2:
-        raise ValueError("Dataset phải có cả hai lớp fake và real.")
-
-    x_train, x_test, y_train, y_test = train_test_split(
-        df["text"], df["label"], test_size=args.test_size, random_state=args.random_state, stratify=df["label"]
-    )
-
-    pipeline = Pipeline([
-        ("tfidf", TfidfVectorizer(lowercase=True, ngram_range=(1, 2), min_df=1, sublinear_tf=True)),
-        ("clf", LogisticRegression(max_iter=1000, class_weight="balanced")),
-    ])
-    pipeline.fit(x_train, y_train)
-
-    y_pred = pipeline.predict(x_test)
-    metrics = {
-        "accuracy": round(float(accuracy_score(y_test, y_pred)), 4),
-        "precision_macro": round(float(precision_score(y_test, y_pred, average="macro", zero_division=0)), 4),
-        "recall_macro": round(float(recall_score(y_test, y_pred, average="macro", zero_division=0)), 4),
-        "f1_macro": round(float(f1_score(y_test, y_pred, average="macro", zero_division=0)), 4),
-        "classification_report": classification_report(y_test, y_pred, output_dict=True, zero_division=0),
-        "train_size": int(len(x_train)),
-        "test_size": int(len(x_test)),
-        "random_state": args.random_state,
-    }
-    if hasattr(pipeline, "predict_proba"):
-        classes = list(pipeline.named_steps["clf"].classes_)
-        probs = pipeline.predict_proba(x_test)[:, classes.index("fake")]
-        try:
-            metrics["roc_auc"] = round(float(roc_auc_score((y_test == "fake").astype(int), probs)), 4)
-        except ValueError:
-            metrics["roc_auc"] = None
-
+    p = argparse.ArgumentParser()
+    p.add_argument('--data', default=str(PROJECT / 'data/fake_reviews_product.csv'))
+    p.add_argument('--output', default=str(ROOT / 'ml/models/fake_review_model.joblib'))
+    p.add_argument('--feedback', default='', help='Optional human-moderated data; never added to the held-out test')
+    args = p.parse_args()
+    df = dataset(args.data)
+    train_idx, test_idx = train_test_split(df.index, test_size=.2, stratify=df.target, random_state=42)
+    pipeline = Pipeline([('clean', FunctionTransformer(clean_batch)),
+        ('tfidf', TfidfVectorizer(ngram_range=(1, 2), max_features=30000, min_df=2, max_df=.95, sublinear_tf=True)),
+        ('svm', LinearSVC(C=1., random_state=42))])
+    model = CalibratedClassifierCV(pipeline, cv=3, method='sigmoid', ensemble=False)
+    training_text=df.loc[train_idx,'text'].copy()
+    training_labels=df.loc[train_idx,'target'].copy()
+    feedback_size=0
+    if args.feedback:
+        feedback=dataset(args.feedback)
+        feedback=feedback[~feedback.normalized.isin(df.normalized)]
+        training_text=pd.concat([training_text,feedback.text],ignore_index=True)
+        training_labels=pd.concat([training_labels,feedback.target],ignore_index=True)
+        feedback_size=len(feedback)
+    model.fit(training_text,training_labels)
+    actual = df.loc[test_idx, 'target']
+    probs = model.predict_proba(df.loc[test_idx, 'text'])[:, list(model.classes_).index(1)]
+    pred = (probs >= .5).astype(int)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(pipeline, output)
+    joblib.dump(model, output)
+    meta = dict(model_name='tfidf_svm_calibrated', version=datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S'),
+        language='en', task='original vs computer generated reviews', sklearn_version=sklearn.__version__,
+        data_sha256=hashlib.sha256(Path(args.data).read_bytes()).hexdigest(), random_state=42,
+        train_size=len(training_text), feedback_size=feedback_size, test_size=len(test_idx), calibration='sigmoid, 3-fold on training only',
+        accuracy=float(accuracy_score(actual, pred)), roc_auc=float(roc_auc_score(actual, probs)),
+        brier_score=float(brier_score_loss(actual, probs)),
+        classification_report=classification_report(actual, pred, output_dict=True),
+        confusion_matrix=confusion_matrix(actual, pred).tolist())
+    output.with_suffix('.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding='utf-8')
+    train_set = set(train_idx)
+    df.assign(split=['train' if i in train_set else 'test' for i in df.index]).to_csv(output.parent / 'dataset_split.csv', index=False)
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    truth, forecast = calibration_curve(actual, probs, n_bins=10)
+    plt.plot(forecast, truth, 'o-', label='SVM calibrated'); plt.plot([0,1], [0,1], '--')
+    plt.xlabel('Predicted probability'); plt.ylabel('Observed frequency'); plt.legend()
+    plt.savefig(output.parent / 'calibration.png', dpi=150); plt.close()
+    print(json.dumps(meta, indent=2))
 
-    metrics_path = Path(args.metrics)
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Saved model to {output}")
-    print(f"Saved metrics to {metrics_path}")
-    print(json.dumps({k: v for k, v in metrics.items() if isinstance(v, (int, float, str))}, ensure_ascii=False, indent=2))
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

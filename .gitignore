@@ -7,6 +7,12 @@
 **/.env
 **/.env.*
 !**/.env.example
+!**/.env.integrations.example
+**/firebase-config.local.json
+**/service-account*.json
+**/media-temp/
+**/browser-cache/
+**/browser-temp/
 
 # =========================
 # Python / FastAPI Backend
@@ -46,3 +52,42 @@
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local database credentials and setup backups
+**/.env*
+!**/.env.example
+
+# Synchronization safety: local captures, artifacts and credentials
+**/.env*
+!**/.env.example
+!**/.env.integrations.example
+*.log
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.pem
+*.key
+*.p12
+*.pfx
+*.safetensors
+*.pkl
+*.joblib
+*.zip
+**/db_backups/
+**/data/browser-*/
+**/media-temp/
+**/firebase-config.local.json
+**/service-account*.json
+**/service_account*.json
+**/local.properties
+**/key.properties
+**/.coverage
+**/htmlcov/
+/docs/screenshots/
+/backend-api/backend/ml/models/*
+!/backend-api/backend/ml/models/README.md
+!/backend-api/backend/ml/models/ARTIFACTS.json
+# Existing research data/artifacts tracked in main are preserved, not re-synced.
+/data/
+/outputs/

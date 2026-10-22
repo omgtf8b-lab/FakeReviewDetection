@@ -1,0 +1,12 @@
+// Copy to firebase-messaging-sw.js and configure your Firebase web app locally.
+// This template is not registered until the owner configures and builds it.
+importScripts('https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.0.0/firebase-messaging-compat.js');
+firebase.initializeApp({
+  apiKey: 'YOUR_WEB_API_KEY',
+  authDomain: 'YOUR_PROJECT.firebaseapp.com',
+  projectId: 'YOUR_PROJECT',
+  messagingSenderId: 'YOUR_SENDER_ID',
+  appId: 'YOUR_WEB_APP_ID'
+});
+firebase.messaging();

@@ -310,7 +310,7 @@ export default function Account() {
                 marginTop: 'var(--spacing-4)'
               }}>
                 <Info size={16} style={{ flexShrink: 0, color: 'var(--primary)' }} />
-                <span>Thông tin tài khoản được quản lý đồng bộ từ hệ thống. Máy chủ hiện chưa hỗ trợ chỉnh sửa thông tin hồ sơ.</span>
+                <span>Thông tin tài khoản được quản lý đồng bộ từ hệ thống. Mở Nghiệp vụ & AI → Tài khoản để cập nhật hồ sơ.</span>
               </div>
             </div>
           </div>
@@ -336,10 +336,10 @@ export default function Account() {
               <Lock size={20} style={{ color: 'var(--text-secondary)', marginTop: '2px', flexShrink: 0 }} />
               <div>
                 <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
-                  Backend hiện chưa hỗ trợ đổi mật khẩu.
+                  Đổi mật khẩu tại Nghiệp vụ & AI → Tài khoản.
                 </div>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  Hệ thống xác thực chưa cung cấp endpoint API phục vụ tính năng cập nhật mật khẩu trực tiếp.
+                  Mật khẩu mới sẽ thu hồi các phiên đăng nhập cũ.
                 </p>
               </div>
             </div>

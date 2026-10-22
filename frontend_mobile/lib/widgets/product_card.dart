@@ -47,7 +47,8 @@ class ProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
               ),
-              child: Icon(
+              clipBehavior: Clip.antiAlias,
+              child: product.imageUrl != null && product.imageUrl!.isNotEmpty ? Image.network(product.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(product.icon, color: AppTheme.primaryBlue)) : Icon(
                 product.icon,
                 size: 34,
                 color: AppTheme.primaryBlue,

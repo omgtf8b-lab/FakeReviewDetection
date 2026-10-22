@@ -15,10 +15,12 @@ class ReviewApiException implements Exception {
 }
 
 class ReviewApiService {
-  static final http.Client _client = http.Client();
+  static http.Client _client = http.Client();
+  @visibleForTesting
+  static void setClientForTesting(http.Client client) { _client = client; }
 
   static Future<List<Review>> getReviewsByProduct(dynamic productId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/reviews/product/$productId');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/reviews/product/$productId?page=1&page_size=100');
     try {
       final response = await _client
           .get(uri, headers: {'Accept': 'application/json'})
@@ -28,9 +30,21 @@ class ReviewApiService {
         final Map<String, dynamic> body =
             json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         final rawItems = (body['items'] as List<dynamic>?) ?? [];
-        return rawItems
+        final items = rawItems
             .map((e) => Review.fromJson(e as Map<String, dynamic>))
             .toList();
+        final total = (body['total'] as num?)?.toInt() ?? items.length;
+        int page = 2;
+        while (items.length < total) {
+          final next = await _client.get(Uri.parse('${ApiConfig.baseUrl}/api/reviews/product/$productId?page=$page&page_size=100'), headers: {'Accept':'application/json'}).timeout(const Duration(seconds:15));
+          if (next.statusCode != 200) throw const ReviewApiException('Không tải đủ các trang review.');
+          final payload = json.decode(utf8.decode(next.bodyBytes)) as Map<String,dynamic>;
+          final rows = (payload['items'] as List<dynamic>?) ?? [];
+          if (rows.isEmpty) throw const ReviewApiException('Dữ liệu review thay đổi. Vui lòng làm mới.');
+          items.addAll(rows.map((e) => Review.fromJson(e as Map<String,dynamic>)));
+          page++;
+        }
+        return items;
       } else {
         throw ReviewApiException(
             'Lỗi máy chủ: HTTP ${response.statusCode}',

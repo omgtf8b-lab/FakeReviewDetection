@@ -16,6 +16,7 @@ class User(Base):
 
     products = relationship("Product", back_populates="shop", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
+    profile = relationship('Profile', uselist=False, cascade='all, delete-orphan')
 
 
 class Product(Base):
@@ -44,6 +45,19 @@ class Product(Base):
 
     shop = relationship("User", back_populates="products")
     reviews = relationship("Review", back_populates="product", cascade="all, delete-orphan")
+    extra = relationship('ProductExtra', uselist=False, cascade='all, delete-orphan')
+
+    @property
+    def image_url(self):
+        return self.extra.image_url if self.extra else None
+
+    @property
+    def stock(self):
+        return self.extra.stock if self.extra else None
+
+    @property
+    def sale_status(self):
+        return self.extra.sale_status if self.extra else 'active'
 
 
 class Review(Base):
@@ -58,16 +72,29 @@ class Review(Base):
 
     product = relationship("Product", back_populates="reviews")
     user = relationship("User", back_populates="reviews")
+    moderations = relationship('Moderation', cascade='all, delete-orphan', order_by='Moderation.id.desc()')
     predictions = relationship(
         "Prediction",
         back_populates="review",
         cascade="all, delete-orphan",
-        order_by="Prediction.created_at.desc()",
+        order_by="Prediction.id.desc()",
     )
 
     @property
     def prediction(self):
         return self.predictions[0] if self.predictions else None
+
+    @property
+    def author_name(self):
+        return self.user.profile.display_name if self.user and self.user.profile and self.user.profile.display_name else f'Người dùng #{self.user_id}'
+
+    @property
+    def moderation_label(self):
+        return self.moderations[0].label if self.moderations else None
+
+    @property
+    def effective_label(self):
+        return self.moderation_label or (self.prediction.predicted_label if self.prediction else None)
 
 
 class Prediction(Base):
@@ -105,4 +132,8 @@ class ReviewReport(Base):
 
     review = relationship("Review")
     reporter = relationship("User")
+
+
+# Register extension models for scripts that import models without importing main.
+import extended_models  # noqa: E402,F401
 

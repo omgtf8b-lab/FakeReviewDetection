@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import '../styles/dashboard.css';
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const { loading, isAuthenticated, user } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const getPageTitle = (pathname) => {
     switch (pathname) {
       case '/':
-        return 'Tổng quan hệ thống';
+        return ['admin','engineer'].includes(user?.role) ? 'Thống kê quản trị' : 'Kiểm tra sản phẩm';
       case '/users':
         return 'Quản lý người dùng';
       case '/account':
@@ -22,7 +24,7 @@ export default function DashboardLayout() {
       case '/reviews':
         return 'Quản lý đánh giá';
       case '/review-check':
-        return 'Kiểm tra đánh giá';
+        return 'Kiểm tra sản phẩm';
       case '/result':
         return 'Kết quả phân tích';
       case '/history':
@@ -33,6 +35,9 @@ export default function DashboardLayout() {
   };
 
   const pageTitle = getPageTitle(location.pathname);
+
+  if (loading) return <p style={{padding:32}}>Đang khôi phục phiên đăng nhập…</p>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   const toggleSidebar = () => {
     if (window.innerWidth <= 768) {

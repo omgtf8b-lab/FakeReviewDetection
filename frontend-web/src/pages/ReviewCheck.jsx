@@ -47,8 +47,8 @@ export default function ReviewCheck() {
       return;
     }
 
-    if (trimmedContent.length < 5) {
-      setErrorMessage('Nội dung đánh giá phải có ít nhất 5 ký tự.');
+    if (trimmedContent.length < 1) {
+      setErrorMessage('Nội dung đánh giá phải có ít nhất 1 ký tự.');
       return;
     }
 
@@ -78,7 +78,7 @@ export default function ReviewCheck() {
       });
     } catch (err) {
       if (err.status === 400 || err.status === 422) {
-        setErrorMessage(formatApiError(err, 'Nội dung đánh giá không hợp lệ (tối thiểu 5 ký tự, tối đa 5000 ký tự).'));
+        setErrorMessage(formatApiError(err, 'Nội dung đánh giá không hợp lệ (tối thiểu 1 ký tự, tối đa 5000 ký tự).'));
       } else if (err.message && err.message.includes('fetch')) {
         setErrorMessage('Không thể kết nối đến máy chủ.');
       } else {
@@ -182,7 +182,7 @@ export default function ReviewCheck() {
               <textarea 
                 id="check-content"
                 className="form-input form-textarea" 
-                placeholder="Nhập nội dung đánh giá cần kiểm tra (tối thiểu 5 ký tự)..."
+                placeholder="Nhập nội dung đánh giá cần kiểm tra (tối thiểu 1 ký tự)..."
                 value={reviewText}
                 onChange={(e) => {
                   setReviewText(e.target.value);
@@ -192,8 +192,8 @@ export default function ReviewCheck() {
                 disabled={isAnalyzing}
               />
               <div className="flex items-center justify-between" style={{ marginTop: 'var(--spacing-2)' }}>
-                <span style={{ fontSize: '0.75rem', color: reviewText.trim().length < 5 && reviewText.length > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                  {reviewText.trim().length < 5 && reviewText.length > 0 ? 'Cần tối thiểu 5 ký tự' : 'Tối thiểu 5 ký tự, tối đa 5000 ký tự'}
+                <span style={{ fontSize: '0.75rem', color: reviewText.trim().length < 1 && reviewText.length > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                  {reviewText.trim().length < 1 && reviewText.length > 0 ? 'Cần tối thiểu 1 ký tự' : 'Tối thiểu 1 ký tự, tối đa 5000 ký tự'}
                 </span>
                 <span className="text-muted" style={{ fontSize: '0.875rem' }}>
                   {reviewText.length} / 5000 ký tự

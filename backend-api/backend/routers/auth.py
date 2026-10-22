@@ -27,6 +27,8 @@ def login_user(user: schemas.UserAuth, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email.lower()).first()
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email hoặc mật khẩu không đúng")
+    if not db_user.is_active:
+        raise HTTPException(403, 'Tài khoản đã bị khóa')
     token = create_access_token(db_user)
     return {
         "access_token": token,

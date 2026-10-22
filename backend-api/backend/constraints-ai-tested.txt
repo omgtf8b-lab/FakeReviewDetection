@@ -1,0 +1,4 @@
+# Versions used for the recorded DistilBERT run
+torch==2.14.1
+transformers==5.20.1
+accelerate==1.15.0

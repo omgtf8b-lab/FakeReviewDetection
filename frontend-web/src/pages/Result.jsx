@@ -1,4 +1,6 @@
 import React from 'react';
+import Explanation from '../components/Explanation';
+import ReviewDiscussion from '../components/ReviewDiscussion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   AlertTriangle, RotateCcw, ShieldAlert, ShieldCheck, 
@@ -107,6 +109,8 @@ export default function Result() {
         </div>
       </div>
 
+      <Explanation content={analyzedContent} modelVersion={analysis.model_version} />
+      {passedReview?.id && <ReviewDiscussion reviewId={passedReview.id} productId={passedReview.productId} />}
       {/* Fallback Heuristic Warning (Requirement 6) */}
       {isFallback && (
         <div style={{

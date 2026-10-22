@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/external_login.dart';
 import '../services/auth_api_service.dart';
 import '../services/auth_state.dart';
 import '../theme/app_theme.dart';
@@ -269,6 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                const ExternalLogin(),
                 // Submit Button
                 ListenableBuilder(
                   listenable: AuthState.instance,
