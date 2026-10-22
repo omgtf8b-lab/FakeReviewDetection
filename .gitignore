@@ -1,0 +1,48 @@
+﻿# =========================
+# Secrets / Environment
+# =========================
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# =========================
+# Python / FastAPI Backend
+# =========================
+**/.venv/
+**/venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# React / Node
+# =========================
+**/node_modules/
+**/dist/
+**/.vite/
+
+# =========================
+# Flutter / Dart
+# =========================
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+
+# =========================
+# IDE / OS
+# =========================
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+feature,weight,true_label,predicted_label
+the,0.13950632437122953,Computer Generated (CG),Computer Generated (CG)
+is,0.12132101516753971,Computer Generated (CG),Computer Generated (CG)
+comfortable,0.08984450977789207,Computer Generated (CG),Computer Generated (CG)
+and,0.0835456269271196,Computer Generated (CG),Computer Generated (CG)
+wide,0.06777097656794522,Computer Generated (CG),Computer Generated (CG)
+inside,-0.04710471247912772,Computer Generated (CG),Computer Generated (CG)
+purse,-0.038839309936176285,Computer Generated (CG),Computer Generated (CG)
+am,0.036888644366849285,Computer Generated (CG),Computer Generated (CG)
+large,0.033123724400929117,Computer Generated (CG),Computer Generated (CG)
+very,0.03289029618689784,Computer Generated (CG),Computer Generated (CG)

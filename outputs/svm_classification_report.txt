@@ -1,0 +1,19 @@
+TF-IDF + Linear SVM
+==================================================
+
+Accuracy: 0.9472
+Accuracy (%): 94.72%
+
+Classification Report:
+                         precision    recall  f1-score   support
+
+          Original (OR)     0.9423    0.9528    0.9475      4043
+Computer Generated (CG)     0.9522    0.9416    0.9468      4039
+
+               accuracy                         0.9472      8082
+              macro avg     0.9472    0.9472    0.9472      8082
+           weighted avg     0.9472    0.9472    0.9472      8082
+
+Confusion Matrix:
+[[3852  191]
+ [ 236 3803]]
