@@ -20,19 +20,20 @@ def analyze_text(payload: schemas.PredictionDirectRequest):
 def get_model_info():
     return {
         "ready": predictor.ready,
-        "model_name": settings.model_name,
-        "model_version": settings.model_version,
-        "model_path": settings.model_path,
-        "metrics_path": settings.model_metrics_path,
-        "message": "Model đã train và được load." if predictor.ready else "Chưa có model artifact; API đang dùng fallback dev-only.",
+        "model_name": predictor.metadata.get("model_name"),
+        "model_version": predictor.metadata.get("version"),
+        "metrics": predictor.metadata,
+        "message": "Model đã train và được load." if predictor.ready else "Chưa nạp được model; phân tích trả HTTP 503.",
     }
 
 
 @router.post("/model/reload", summary="Nạp lại mô hình")
 def reload_model(current_user: models.User = Depends(require_roles("admin", "engineer"))):
+    loaded = predictor.reload()
     return {
-        "ready": predictor.reload(),
-        "message": "Đã reload model." if predictor.ready else "Không tìm thấy model artifact.",
+        "ready": predictor.ready,
+        "reloaded": loaded,
+        "message": "Đã reload model." if loaded else "Nạp thất bại; giữ model trước đó nếu có.",
     }
 
 

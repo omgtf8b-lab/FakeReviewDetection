@@ -1,6 +1,10 @@
 from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent / '.env', override=False)
 
 
 class Settings(BaseSettings):
@@ -9,12 +13,12 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
     database_url: str = "sqlite:///./fake_review.db"
-    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
     model_path: str = "ml/models/fake_review_model.joblib"
-    model_name: str = "tfidf_logreg"
+    model_name: str = "tfidf_svm_calibrated"
     model_version: str = "1.0.0"
-    model_metrics_path: str = "ml/models/metrics.json"
-    verification_base_url: str = "http://127.0.0.1:8000"
+    model_metrics_path: str = "ml/models/fake_review_model.json"
+    verification_base_url: str = "http://127.0.0.1:8001"
     auto_create_tables: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

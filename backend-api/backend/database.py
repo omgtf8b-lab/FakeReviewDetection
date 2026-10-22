@@ -1,5 +1,5 @@
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from config import settings
 
@@ -13,6 +13,12 @@ if _db_url.startswith("sqlite:///."):
 
 connect_args = {"check_same_thread": False} if _db_url.startswith("sqlite") else {}
 engine = create_engine(_db_url, pool_pre_ping=True, connect_args=connect_args)
+if _db_url.startswith('sqlite'):
+    @event.listens_for(engine, 'connect')
+    def enforce_foreign_keys(connection, _):
+        cursor=connection.cursor()
+        cursor.execute('PRAGMA foreign_keys=ON')
+        cursor.close()
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 

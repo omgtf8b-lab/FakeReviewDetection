@@ -52,6 +52,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             category: freshProduct.category,
             price: freshProduct.price,
             description: freshProduct.description,
+            imageUrl: freshProduct.imageUrl,
             productCode: freshProduct.productCode,
             sku: freshProduct.sku,
             manufacturer: freshProduct.manufacturer,
@@ -359,10 +360,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Price & Real Average Rating Row
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
+                    // Wrap price and rating on narrow screens.
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           _product.formattedPrice,

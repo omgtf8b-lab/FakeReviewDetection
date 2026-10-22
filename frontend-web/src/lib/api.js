@@ -3,7 +3,10 @@
 // Fake Review Detection System
 // ==========================================
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001';
+// During development Vite forwards API calls from the current web origin.
+// This also works when Vite selects another free port.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim()
+  || (import.meta.env.DEV ? '' : 'http://127.0.0.1:8001');
 
 // Role mappings
 export const ROLE_LABELS = {
@@ -171,6 +174,7 @@ async function request(endpoint, options = {}) {
 
 // REST Client methods
 export const api = {
+  upload: (endpoint, form) => request(endpoint, { method: 'POST', body: form }),
   get: (endpoint, params = null) => {
     let url = endpoint;
     if (params) {
@@ -317,7 +321,7 @@ export const reviewApi = {
 // Prediction Services
 export const predictionApi = {
   analyze: (content) => {
-    return api.post('/api/predictions/analyze', { content });
+    return api.post('/api/workspace/analyze', { content });
   },
 
   getMyHistory: (limit = 50) => {

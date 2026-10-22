@@ -359,7 +359,7 @@ export default function Dashboard() {
             )}
           </div>
           <div style={{ fontSize: '0.725rem', color: 'var(--text-secondary)', marginTop: '8px', textAlign: 'center' }}>
-            * Dữ liệu phân tích thực tế từ hệ thống. (Backend hiện chưa hỗ trợ chuỗi thời gian theo ngày/tuần).
+            * Dữ liệu phân tích thực tế từ hệ thống. Xem chuỗi thời gian trong Nghiệp vụ & AI → Độ uy tín shop.
           </div>
         </div>
 

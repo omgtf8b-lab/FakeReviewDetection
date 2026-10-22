@@ -5,6 +5,8 @@ import '../services/auth_state.dart';
 import '../services/review_api_service.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
+import '../widgets/lime_explanation.dart';
+import '../services/workspace_api.dart';
 
 class ReviewDetailScreen extends StatelessWidget {
   final Review review;
@@ -18,13 +20,6 @@ class ReviewDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ignore: avoid_print
-    print('Review Detail review.id = ${review.id}');
-    // ignore: avoid_print
-    print('Review Detail userId = ${review.userId}');
-    // ignore: avoid_print
-    print('Review Detail content = ${review.content}');
-
     final isFake = review.isFake && review.isAnalyzed;
     final isAnalyzed = review.isAnalyzed;
     final prediction = review.prediction;
@@ -55,6 +50,7 @@ class ReviewDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            LimeExplanation(content: review.content, modelVersion: review.prediction?.modelVersion),
             // Product Reference Context Card
             Container(
               padding: const EdgeInsets.all(12),
@@ -253,7 +249,7 @@ class ReviewDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              prediction?.explanation != null &&
+                              review.moderationLabel == null && prediction?.explanation != null &&
                                       prediction!.explanation!.isNotEmpty
                                   ? prediction.explanation!
                                   : review.stateExplanation,
@@ -296,7 +292,7 @@ class ReviewDetailScreen extends StatelessWidget {
                               // Điểm phân tích (confidence_score)
                               Expanded(
                                 child: _ScoreItem(
-                                  label: 'Điểm phân tích',
+                                  label: 'Độ tin cậy nhãn',
                                   value:
                                       '${(prediction.confidenceScore * 100).round()}%',
                                   subtitle: prediction.confidenceScore
@@ -788,13 +784,13 @@ class ReviewDetailScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: TextButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Cảm ơn bạn đã phản hồi!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
+                      onPressed: () async {
+                        try {
+                          await WorkspaceApi.request('/api/workspace/reviews/${review.id}/vote', method: 'PUT', body: {'useful': true});
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã lưu bình chọn hữu ích')));
+                        } catch (e) {
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                        }
                       },
                       icon: const Icon(Icons.thumb_up_alt_outlined, size: 16),
                       label:

@@ -70,6 +70,8 @@ class Review {
   final String content;
   final DateTime? createdAt;
   final ReviewPrediction? prediction;
+  final String? effectiveLabel;
+  final String? moderationLabel;
 
   // Optional / compatibility fields
   final String? _inputAuthor;
@@ -95,6 +97,8 @@ class Review {
     required this.content,
     this.createdAt,
     this.prediction,
+    this.effectiveLabel,
+    this.moderationLabel,
     String? author,
     String? authorAvatar,
     String? date,
@@ -132,10 +136,13 @@ class Review {
       id: '${json['id'] ?? ''}',
       productId: '${json['product_id'] ?? ''}',
       userId: rawUserId,
+      author: json['author_name'] as String?,
       rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
       content: (json['content'] as String?) ?? '',
       createdAt: rawCreatedAt,
       prediction: prediction,
+      effectiveLabel: json['effective_label'] as String?,
+      moderationLabel: json['moderation_label'] as String?,
       isAnalyzed: prediction != null,
     );
   }
@@ -172,6 +179,7 @@ class Review {
   String get title => _inputTitle ?? '';
 
   bool get isAnalyzed {
+    if (effectiveLabel == 'real' || effectiveLabel == 'fake') return true;
     if (prediction != null) return true;
     final custom = _customIsAnalyzed;
     if (custom != null) return custom;
@@ -179,6 +187,7 @@ class Review {
   }
 
   bool get isFake {
+    if (effectiveLabel == 'real' || effectiveLabel == 'fake') return effectiveLabel == 'fake';
     if (prediction != null) {
       return prediction!.predictedLabel == 'fake';
     }
@@ -187,7 +196,7 @@ class Review {
 
   double get fakeConfidence {
     if (prediction != null) {
-      return prediction!.confidenceScore;
+      return prediction!.fakeProbability;
     }
     return _customFakeConfidence ?? 0.0;
   }
@@ -208,6 +217,7 @@ class Review {
   }
 
   String get stateExplanation {
+    if (moderationLabel != null) return 'Nhãn đã được kiểm duyệt thủ công. Xác suất AI bên dưới được giữ để đối chiếu.';
     if (!isAnalyzed) return 'Đánh giá chưa qua mô hình phân tích';
     return isFake
         ? 'Có dấu hiệu là đánh giá được sinh bởi máy tính'

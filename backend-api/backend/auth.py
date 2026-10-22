@@ -48,10 +48,15 @@ def verify_password(password: str, encoded: str) -> bool:
 
 
 def create_access_token(user: models.User) -> str:
+    from sqlalchemy.orm import object_session
+    from extended_models import Profile
+    session = object_session(user)
+    profile = session.get(Profile, user.id) if session else None
+    version = profile.token_version if profile else 0
     now = int(time.time())
     exp = now + settings.access_token_expire_minutes * 60
     header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
-    payload = _b64(json.dumps({"sub": str(user.id), "role": user.role, "iat": now, "exp": exp}, separators=(",", ":")).encode())
+    payload = _b64(json.dumps({"sub": str(user.id), "role": user.role, "ver": version, "iat": now, "exp": exp}, separators=(",", ":")).encode())
     unsigned = f"{header}.{payload}".encode("ascii")
     signature = _b64(hmac.new(settings.secret_key.encode("utf-8"), unsigned, hashlib.sha256).digest())
     return f"{header}.{payload}.{signature}"
@@ -92,6 +97,10 @@ def get_current_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Tài khoản không tồn tại hoặc đã bị khóa")
+    from extended_models import Profile
+    profile = db.get(Profile, user.id)
+    if payload.get('ver', 0) != (profile.token_version if profile else 0):
+        raise HTTPException(401, 'Mật khẩu đã thay đổi. Vui lòng đăng nhập lại.')
     return user
 
 

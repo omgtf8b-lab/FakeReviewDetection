@@ -1,80 +1,81 @@
 import 'package:flutter/material.dart';
+
+import '../services/auth_state.dart';
 import '../theme/app_theme.dart';
 import 'account_screen.dart';
-import 'home_screen.dart';
-import 'products_screen.dart';
-import 'search_screen.dart';
+import 'product_inspector_screen.dart';
+import 'workspace_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
-
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    AuthState.instance.addListener(_changed);
+  }
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+  @override
+  void dispose() {
+    AuthState.instance.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) {
+      setState(() {
+        _currentIndex = 0;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> screens = [
-      HomeScreen(onTabChange: _onTabTapped),
-      const SearchScreen(),
-      const ProductsScreen(),
-      const AccountScreen(),
-    ];
-
+    final staff = [
+      'admin',
+      'engineer',
+    ].contains(AuthState.instance.currentUser?.role);
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: screens,
+        children: [
+          const ProductInspectorScreen(),
+          const ProductInspectorScreen(historyOnly: true),
+          const AccountScreen(),
+          if (staff) const WorkspaceScreen(),
+        ],
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: AppTheme.surfaceBorder, width: 1),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() {
+          _currentIndex = index;
+        }),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppTheme.primaryBlue,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.fact_check_outlined),
+            label: 'Kiểm tra',
           ),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: _onTabTapped,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primaryBlue,
-          unselectedItemColor: AppTheme.textSecondary,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Trang chủ',
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'Lịch sử',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Tài khoản',
+          ),
+          if (staff)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              label: 'Quản trị',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search_outlined),
-              activeIcon: Icon(Icons.search_rounded),
-              label: 'Tìm kiếm',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_outlined),
-              activeIcon: Icon(Icons.inventory_2_rounded),
-              label: 'Sản phẩm',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Tài khoản',
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

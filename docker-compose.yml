@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:17
+    profiles: [database]
+    environment:
+      POSTGRES_DB: fake_review_db
+      POSTGRES_USER: fake_review
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.0
+    profiles: [search]
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports: ["127.0.0.1:9200:9200"]
+    volumes: ["search_data:/usr/share/elasticsearch/data"]
+  redis:
+    image: redis:7-alpine
+    profiles: [cache]
+    ports: ["127.0.0.1:6379:6379"]
+volumes:
+  postgres_data:
+  search_data:

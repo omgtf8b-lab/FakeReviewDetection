@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/product.dart';
@@ -25,7 +26,9 @@ class ProductListResult {
 }
 
 class ProductApiService {
-  static final http.Client _client = http.Client();
+  static http.Client _client = http.Client();
+  @visibleForTesting
+  static void setClientForTesting(http.Client client) { _client = client; }
 
   static Future<ProductListResult> getProducts({
     String? search,

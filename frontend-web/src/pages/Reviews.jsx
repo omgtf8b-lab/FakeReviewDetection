@@ -295,7 +295,7 @@ export default function Reviews() {
 
   // Navigate to Result page with review context
   const handleNavigateToResult = (review) => {
-    const isFake = review.prediction?.predicted_label === 'fake';
+    const isFake = (review.effective_label || review.prediction?.predicted_label) === 'fake';
     navigate('/result', {
       state: {
         review: {
@@ -341,8 +341,8 @@ export default function Reviews() {
     const contentTrimmed = (addFormData.content || '').trim();
     if (!contentTrimmed) {
       errors.content = 'Nội dung đánh giá không được để trống';
-    } else if (contentTrimmed.length < 5) {
-      errors.content = 'Nội dung đánh giá phải có ít nhất 5 ký tự';
+    } else if (contentTrimmed.length < 1) {
+      errors.content = 'Nội dung đánh giá phải có ít nhất 1 ký tự';
     } else if (contentTrimmed.length > 5000) {
       errors.content = 'Nội dung đánh giá không được vượt quá 5000 ký tự';
     }
@@ -398,8 +398,8 @@ export default function Reviews() {
     const contentTrimmed = (editFormData.content || '').trim();
     if (!contentTrimmed) {
       errors.content = 'Nội dung đánh giá không được để trống';
-    } else if (contentTrimmed.length < 5) {
-      errors.content = 'Nội dung đánh giá phải có ít nhất 5 ký tự';
+    } else if (contentTrimmed.length < 1) {
+      errors.content = 'Nội dung đánh giá phải có ít nhất 1 ký tự';
     } else if (contentTrimmed.length > 5000) {
       errors.content = 'Nội dung đánh giá không được vượt quá 5000 ký tự';
     }
@@ -1335,7 +1335,7 @@ export default function Reviews() {
                     id="add-content"
                     className="form-input"
                     rows={4}
-                    placeholder="Nhập trải nghiệm thực tế về sản phẩm (tối thiểu 5 ký tự)..."
+                    placeholder="Nhập trải nghiệm thực tế về sản phẩm (tối thiểu 1 ký tự)..."
                     value={addFormData.content}
                     onChange={(e) => {
                       setAddFormData((prev) => ({ ...prev, content: e.target.value }));

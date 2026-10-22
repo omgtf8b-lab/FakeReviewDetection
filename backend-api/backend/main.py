@@ -2,6 +2,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import models
+import extended_models
+from routers import workspace
+from routers import integrations
+from routers import product_links
 from config import settings
 from database import Base, engine
 from routers import auth, users, products, reviews, predictions, statistics, admin, product_verification
@@ -12,6 +16,14 @@ from sqlalchemy import text
 async def lifespan(app: FastAPI):
     if settings.auto_create_tables:
         Base.metadata.create_all(bind=engine)
+    from database import SessionLocal
+    from extended_models import Setting
+    from ml.predictor import predictor
+    with SessionLocal() as db:
+        active = db.get(Setting, 'active_model')
+        if active:
+            settings.model_path = active.value
+            predictor.reload()
     yield
 
 
@@ -75,3 +87,6 @@ app.include_router(statistics.router)
 app.include_router(admin.router)
 app.include_router(product_verification.router)
 app.include_router(product_verification.page_router)
+app.include_router(workspace.router)
+app.include_router(integrations.router)
+app.include_router(product_links.router)

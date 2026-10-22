@@ -121,6 +121,19 @@ class AuthState extends ChangeNotifier {
   }
 
   /// Clears session when a protected API reports 401 or 403.
+  Future<void> acceptExternalToken(String token) async {
+    final user = await AuthApiService.getCurrentUser(token);
+    if (!user.isActive) {
+      throw const AuthApiException('Tài khoản đã bị khóa.', statusCode: 403);
+    }
+    await TokenStorageService.saveToken(token);
+    _token = token;
+    _currentUser = user;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Clears session when a protected API reports 401 or 403.
   Future<void> handleSessionExpired([String? reason]) async {
     await TokenStorageService.clearToken();
     _token = null;

@@ -48,6 +48,7 @@ class Product {
   final String brand;
   final double price;
   final String description;
+  final String? imageUrl;
 
   // Real API fields (nullable)
   final String? productCode;
@@ -82,6 +83,7 @@ class Product {
     required this.brand,
     required this.price,
     required this.description,
+    this.imageUrl,
     this.productCode,
     this.sku,
     this.manufacturer,
@@ -119,6 +121,7 @@ class Product {
       category: rawCategory,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       description: (json['description'] as String?) ?? '',
+      imageUrl: json['image_url'] as String?,
       manufacturer: json['manufacturer'] as String?,
       origin: json['origin'] as String?,
       batchNumber: json['batch_number'] as String?,
@@ -141,6 +144,7 @@ class Product {
     String? brand,
     double? price,
     String? description,
+    String? imageUrl,
     String? productCode,
     String? sku,
     String? manufacturer,
@@ -171,6 +175,7 @@ class Product {
       brand: brand ?? this.brand,
       price: price ?? this.price,
       description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
       productCode: productCode ?? this.productCode,
       sku: sku ?? this.sku,
       manufacturer: manufacturer ?? this.manufacturer,

@@ -4,6 +4,7 @@ import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatApiError } from '../lib/api';
 import '../styles/dashboard.css';
+import ExternalLogin from '../components/ExternalLogin';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -95,7 +96,7 @@ export default function Login() {
           <div className="form-group">
             <div className="flex items-center" style={{ justifyContent: 'space-between' }}>
               <label className="form-label" style={{ marginBottom: 0 }}>Mật khẩu</label>
-              <a href="#" className="text-muted" style={{ fontSize: '0.875rem', textDecoration: 'none' }}>Quên mật khẩu?</a>
+              <Link to="/forgot-password" className="text-muted" style={{ fontSize: '0.875rem', textDecoration: 'none' }}>Quên mật khẩu?</Link>
             </div>
             <input 
               required 
@@ -130,6 +131,7 @@ export default function Login() {
             )}
           </button>
         </form>
+        <ExternalLogin />
 
         <div style={{ marginTop: 'var(--spacing-6)', textAlign: 'center' }}>
           <p className="text-muted" style={{ fontSize: '0.875rem' }}>

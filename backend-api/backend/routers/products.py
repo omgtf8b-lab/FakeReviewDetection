@@ -4,12 +4,13 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 import io
 
 import models
+from extended_models import SearchEvent, Profile
 import schemas
 from auth import require_roles, get_current_user
 from database import get_db
@@ -50,6 +51,7 @@ def create_product(
         db.rollback()
         raise HTTPException(status_code=409, detail="Không thể tạo sản phẩm vì dữ liệu bị trùng")
     db.refresh(new_product)
+    db.add(SearchEvent(kind="product", entity_id=new_product.id)); db.commit()
     return new_product
 
 
@@ -57,11 +59,14 @@ def create_product(
 def get_all_products(
     search: str | None = None,
     category: str | None = None,
+    shop_id: int | None = Query(None,gt=0),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Product)
+    if shop_id is not None:
+        query=query.filter(models.Product.shop_id==shop_id)
     if search:
         term = f"%{search}%"
         query = query.filter(
@@ -70,6 +75,7 @@ def get_all_products(
                 models.Product.description.ilike(term),
                 models.Product.product_code.ilike(term),
                 models.Product.brand.ilike(term),
+                models.Product.shop_id.in_(select(Profile.user_id).where(Profile.shop_name.ilike(term))),
             )
         )
     if category:
@@ -116,6 +122,7 @@ def update_product(
         setattr(product, key, value.strip() if isinstance(value, str) else value)
     db.commit()
     db.refresh(product)
+    db.add(SearchEvent(kind="product", entity_id=product.id)); db.commit()
     return product
 
 
@@ -130,6 +137,10 @@ def delete_product(
         raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
     if product.shop_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Bạn không có quyền xóa sản phẩm này")
+    from extended_models import Purchase
+    if db.query(Purchase).filter_by(product_id=product_id).first():
+        raise HTTPException(409, 'Sản phẩm đã có đơn hàng. Chuyển sang tạm ngừng bán để giữ lịch sử giao dịch.')
+    db.add(SearchEvent(kind="product", entity_id=product.id, operation="delete"))
     db.delete(product)
     db.commit()
     return {"message": "Xóa sản phẩm thành công"}
