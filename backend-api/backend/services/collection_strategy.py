@@ -2,6 +2,7 @@
 from services.browser_collector import collect_browser
 from services.marketplaces import collect as collect_http
 from services.marketplaces import identify_url
+from services.browser_diagnostics import CODES
 import json
 import os
 from pathlib import Path
@@ -57,6 +58,9 @@ def collect(url,limit=50,mode='auto'):
         if direct.get('reviews'):return direct
     browser=collect_browser(url,limit)
     browser['attempts']=(direct['attempts'] if direct else [])+[{'collector':'selenium','status':browser['collection_status']}]
+    code=browser.get('diagnostics',{}).get('code')
+    if code in CODES:
+        browser['attempts'][-1]['diagnostic_code']=code
     if browser.get('reviews') or mode=='browser':return browser
     if direct is None:
         direct=collect_http(url,limit)

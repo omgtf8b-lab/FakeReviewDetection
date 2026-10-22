@@ -10,6 +10,8 @@ import threading
 import time
 from urllib.parse import urlsplit
 from services.marketplaces import identify_url, parse_page, CollectionError
+from services.browser_diagnostics import startup_failure
+from services.browser_worker import run_worker, BrowserWorkerError
 
 DOM_SCRIPT = r"""
 const platform=arguments[0], limit=arguments[1];
@@ -62,25 +64,13 @@ def collect_browser(url, limit=50):
     if not _slots.acquire(timeout=2):
         return unavailable(url,'browser_busy','Bộ thu thập đang xử lý một yêu cầu khác; có thể thử lại sau.')
     try:
-        command=[sys.executable,'-m','services.browser_collector','--worker']
-        env={**os.environ,'PYTHONIOENCODING':'utf-8','NO_PROXY':'localhost,127.0.0.1','no_proxy':'localhost,127.0.0.1'}
-        env.setdefault('SE_CACHE_PATH',str(ROOT/'data/browser-cache'))
-        flags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0
-        process=subprocess.Popen(command,cwd=ROOT,env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,encoding='utf-8',creationflags=flags)
         try:
-            stdout,_=process.communicate(json.dumps({'url':url,'limit':limit}),timeout=65)
-        except subprocess.TimeoutExpired:
-            if os.name=='nt':
-                subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=flags)
-            else:process.kill()
-            process.communicate(timeout=5)
-            return unavailable(url,'browser_timeout','Trình duyệt vượt thời gian thu thập; chưa xác nhận đủ dữ liệu.')
-        try:
-            data=json.loads(stdout)
-            if not isinstance(data,dict) or not isinstance(data.get('reviews'),list):raise ValueError()
+            return run_worker({'url':url,'limit':limit})
+        except BrowserWorkerError as exc:
+            status='browser_timeout' if exc.diagnostics['code']=='worker_timeout' else 'browser_unavailable'
+            data=unavailable(url,status,'Bộ đọc trình duyệt chưa hoàn tất. Xem mã chẩn đoán an toàn; chưa có kết luận về sản phẩm.')
+            data['diagnostics']=exc.diagnostics
             return data
-        except ValueError:
-            return unavailable(url,'browser_unavailable','Chưa khởi động được bộ đọc trình duyệt. Kiểm tra Selenium, Chrome và driver trên server.')
     finally:
         _slots.release()
 
@@ -144,28 +134,39 @@ def read_rendered(driver, url, limit):
     return data
 
 
-def worker(payload):
+def _create_driver(profile, proxy):
     from selenium import webdriver
     from selenium.webdriver.chrome.service import Service
+    options=webdriver.ChromeOptions();options.page_load_strategy='eager'
+    for arg in ['--headless=new','--disable-gpu','--disable-background-networking','--disable-sync','--disable-default-apps',
+                    '--no-first-run','--disable-quic','--autoplay-policy=user-gesture-required',f'--user-data-dir={profile}',
+                    f'--proxy-server={proxy}','--proxy-bypass-list=<-loopback>']:
+        options.add_argument(arg)
+    options.add_experimental_option('prefs',{'profile.managed_default_content_settings.images':2,'credentials_enable_service':False})
+    if os.getenv('BROWSER_BINARY'):options.binary_location=os.environ['BROWSER_BINARY']
+    # Browser errors only; no verbose WebDriver requests. The log lives in the
+    # disposable profile and only allowlisted evidence can reach the API.
+    service=Service(executable_path=os.getenv('BROWSER_DRIVER_PATH') or None,
+                    log_output=str(Path(profile)/'chromedriver-startup.log'),
+                    service_args=['--log-level=WARNING','--enable-chrome-logs'])
+    if os.name=='nt':service.creation_flags=subprocess.CREATE_NO_WINDOW
+    return webdriver.Chrome(service=service,options=options)
+
+
+def worker(payload):
     from services.browser_proxy import PublicProxy
     url=payload['url'];identify_url(url)
     base=Path(os.getenv('BROWSER_TEMP_DIR',str(ROOT/'data/browser-temp')));base.mkdir(parents=True,exist_ok=True)
     with PublicProxy() as proxy,tempfile.TemporaryDirectory(prefix='collector-',dir=base,ignore_cleanup_errors=True) as profile:
-        options=webdriver.ChromeOptions();options.page_load_strategy='eager'
-        for arg in ['--headless=new','--disable-gpu','--disable-background-networking','--disable-sync','--disable-default-apps',
-                    '--no-first-run','--disable-quic','--autoplay-policy=user-gesture-required',f'--user-data-dir={profile}',
-                    f'--proxy-server={proxy}','--proxy-bypass-list=<-loopback>']:
-            options.add_argument(arg)
-        options.add_experimental_option('prefs',{'profile.managed_default_content_settings.images':2,'credentials_enable_service':False})
-        if os.getenv('BROWSER_BINARY'):options.binary_location=os.environ['BROWSER_BINARY']
-        service=Service(executable_path=os.getenv('BROWSER_DRIVER_PATH') or None,log_output=subprocess.DEVNULL)
-        if os.name=='nt':service.creation_flags=subprocess.CREATE_NO_WINDOW
+        startup_log=Path(profile)/'chromedriver-startup.log'
         driver=None
         try:
             try:
-                driver=webdriver.Chrome(service=service,options=options)
-            except Exception:
-                return unavailable(url,'browser_start_failed','Chrome trên server chưa khởi động được; đây chưa phải lỗi quyền truy cập của sàn. Có thể dùng mục Thu thập từ Chrome để nhập review đang hiển thị trên trình duyệt của bạn.')
+                driver=_create_driver(profile,proxy)
+            except Exception as exc:
+                data=unavailable(url,'browser_start_failed','Chrome trên server chưa khởi động được; đây chưa phải lỗi quyền truy cập của sàn. Có thể dùng mục Thu thập từ Chrome để nhập review đang hiển thị trên trình duyệt của bạn.')
+                data['diagnostics']=startup_failure(exc,startup_log)
+                return data
             return read_rendered(driver,url,min(int(payload.get('limit',50)),200))
         finally:
             if driver is not None:driver.quit()
